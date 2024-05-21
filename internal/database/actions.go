@@ -61,6 +61,8 @@ func (db *Database) GetGroup(groupId Id, includeSubgroups bool) (Group, []User, 
 
 	err = tx.Get(&group, `SELECT * FROM "group" WHERE "id" = $1`, groupId)
 	if err != nil {
+		tx.Rollback()
+
 		if err == sql.ErrNoRows {
 			return group, users, ErrGroupDoesntExist
 		}
@@ -81,7 +83,14 @@ func (db *Database) GetGroup(groupId Id, includeSubgroups bool) (Group, []User, 
 		sql = `SELECT * FROM "user" WHERE "group" = $1`
 	}
 
-	err = db.sqlx.Select(&users, sql, groupId)
+	err = tx.Select(&users, sql, groupId)
+	if err != nil {
+		tx.Rollback()
+
+		return group, users, err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return group, users, err
 	}
