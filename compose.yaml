@@ -1,0 +1,23 @@
+name: api
+services:
+  app:
+    build: .
+    environment:
+      LISTEN_ADDRESS: :8080
+      DATABASE_URL: postgres://$DATABASE_USER:$DATABASE_PASSWORD@postgres/$DATABASE_NAME?sslmode=disable
+    ports:
+      - 8080:8080
+    restart: unless-stopped
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_DB: $DATABASE_NAME
+      POSTGRES_USER: $DATABASE_USER
+      POSTGRES_PASSWORD: $DATABASE_PASSWORD
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    restart: unless-stopped
+volumes:
+  postgres:
