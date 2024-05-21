@@ -9,7 +9,6 @@ RUN --mount=type=cache,target=/go/pkg/mod/cache \
   CGO_ENABLED=0 go build -o rest-api cmd/rest-api/main.go
 
 FROM scratch
-WORKDIR /app
-COPY migrations ./migrations
+COPY migrations migrations
 COPY --from=build /build/rest-api .
 CMD ["./rest-api"]

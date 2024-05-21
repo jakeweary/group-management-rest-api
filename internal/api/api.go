@@ -3,37 +3,43 @@ package api
 import (
 	"api/internal/config"
 	db "api/internal/database"
+	e "api/internal/error"
 	"errors"
 	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
 type API struct {
-	cfg config.Config
-	db  db.Database
+	cfg *config.Config
+	db  *db.Database
 }
 
-func New() API {
+func New() (*API, error) {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
+	slog.Info("initializing API")
 
-	slog.Info("loading config")
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, err
+	}
 
-	slog.Info("connecting to db")
-	db := db.Connect(cfg.DATABASE_URL)
+	db, err := db.Connect(cfg.DATABASE_URL)
+	if err != nil {
+		return nil, err
+	}
 
-	return API{cfg, db}
+	return &API{cfg, db}, nil
 }
 
 func (api *API) Close() {
+	slog.Debug("closing API")
 	api.db.Close()
 }
 
-func (api *API) Run() {
+func (api *API) Run() error {
 	mux := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 		ErrorHandler:          errorHandler,
@@ -45,32 +51,23 @@ func (api *API) Run() {
 	api.SetRoutes(mux)
 
 	slog.Info("listening", "address", api.cfg.LISTEN_ADDRESS)
-	err := mux.Listen(api.cfg.LISTEN_ADDRESS)
-	if err != nil {
-		log.Fatal(err)
-	}
+	return mux.Listen(api.cfg.LISTEN_ADDRESS)
 }
 
-func (api *API) SeedWithFakeData() {
-	api.db.SeedWithFakeData()
+func (api *API) SeedWithFakeData() error {
+	return api.db.SeedWithFakeData()
 }
 
 func errorHandler(c *fiber.Ctx, err error) error {
-	var e *fiber.Error
-	if errors.As(err, &e) {
-		return c.SendStatus(e.Code)
+	var fiberErr *fiber.Error
+	if errors.As(err, &fiberErr) {
+		return c.SendStatus(fiberErr.Code)
 	}
 
-	var apiErr Error
+	var apiErr e.Error
 	if errors.As(err, &apiErr) {
-		slog.Info("api error", "err", err)
+		slog.Info("error", "err", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": apiErr})
-	}
-
-	var dbErr db.Error
-	if errors.As(err, &dbErr) {
-		slog.Info("db error", "err", err)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": dbErr})
 	}
 
 	slog.Error("internal server error", "err", err)

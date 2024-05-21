@@ -1,7 +1,6 @@
 package database
 
 import (
-	"log"
 	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -15,35 +14,38 @@ type Database struct {
 	sqlx *sqlx.DB
 }
 
-func Connect(url string) Database {
+func Connect(url string) (*Database, error) {
+	slog.Debug("connecting to database")
 	db, err := sqlx.Connect("pgx", url)
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
 	driver, err := pgx.WithInstance(db.DB, &pgx.Config{})
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
+	slog.Debug("initializing database migrator")
 	migrator, err := migrate.NewWithDatabaseInstance("file://migrations", "postgres", driver)
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
 	// slog.Debug("migrating down")
 	// if err := migrator.Down(); err != nil {
-	// 	slog.Info("failed to migrade down", "err", err)
+	// 	slog.Warn("failed to migrate down", "err", err)
 	// }
 
 	slog.Debug("migrating up")
 	if err := migrator.Up(); err != nil {
-		slog.Info("failed to migrade up", "err", err)
+		slog.Warn("failed to migrate up", "err", err)
 	}
 
-	return Database{db}
+	return &Database{db}, nil
 }
 
 func (db *Database) Close() {
+	slog.Debug("closing database")
 	db.sqlx.Close()
 }

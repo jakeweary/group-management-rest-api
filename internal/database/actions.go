@@ -12,7 +12,7 @@ import (
 )
 
 func (db *Database) GetAllGroups(countUsersInSubgroups bool) ([]GroupWithUserCount, error) {
-	slog.Debug("selecting all groups")
+	slog.Debug("getting all groups", "countUsersInSubgroups", countUsersInSubgroups)
 
 	var sql string
 	if countUsersInSubgroups {
@@ -49,7 +49,7 @@ func (db *Database) GetAllGroups(countUsersInSubgroups bool) ([]GroupWithUserCou
 // ---
 
 func (db *Database) GetGroup(groupId Id, includeSubgroups bool) (Group, []User, error) {
-	slog.Debug("getting group", "groupId", groupId)
+	slog.Debug("getting group", "groupId", groupId, "includeSubgroups", includeSubgroups)
 
 	group := Group{}
 	users := []User{}
@@ -58,11 +58,10 @@ func (db *Database) GetGroup(groupId Id, includeSubgroups bool) (Group, []User, 
 	if err != nil {
 		return group, users, err
 	}
+	defer tx.Rollback()
 
 	err = tx.Get(&group, `SELECT * FROM "group" WHERE "id" = $1`, groupId)
 	if err != nil {
-		tx.Rollback()
-
 		if err == sql.ErrNoRows {
 			return group, users, ErrGroupDoesntExist
 		}
@@ -85,8 +84,6 @@ func (db *Database) GetGroup(groupId Id, includeSubgroups bool) (Group, []User, 
 
 	err = tx.Select(&users, sql, groupId)
 	if err != nil {
-		tx.Rollback()
-
 		return group, users, err
 	}
 

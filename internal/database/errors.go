@@ -1,29 +1,17 @@
 package database
 
-import "fmt"
-
-type Code int
-type Error struct {
-	Code    Code   `json:"code"`
-	Message string `json:"message"`
-}
-
-func (e Error) Error() string {
-	return fmt.Sprintf("%v (code %v)", e.Message, e.Code)
-}
+import (
+	e "api/internal/error"
+)
 
 const (
-	CodeParentGroupDoesntExist Code = 100
-	CodeGroupDoesntExist       Code = 101
-	CodeUserDoesntExist        Code = 102
+	CodeParentGroupDoesntExist e.Code = 100
+	CodeGroupDoesntExist       e.Code = 101
+	CodeUserDoesntExist        e.Code = 102
 )
 
 var (
-	ErrParentGroupDoesntExist = e(CodeParentGroupDoesntExist, "parent group doesn't exist")
-	ErrGroupDoesntExist       = e(CodeGroupDoesntExist, "group doesn't exist")
-	ErrUserDoesntExist        = e(CodeUserDoesntExist, "user doesn't exist")
+	ErrParentGroupDoesntExist = e.New(CodeParentGroupDoesntExist, "parent group doesn't exist")
+	ErrGroupDoesntExist       = e.New(CodeGroupDoesntExist, "group doesn't exist")
+	ErrUserDoesntExist        = e.New(CodeUserDoesntExist, "user doesn't exist")
 )
-
-func e(Code Code, Message string) Error {
-	return Error{Code, Message}
-}
